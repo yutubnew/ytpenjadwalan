@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Multi-Channel Scheduler</title>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ✏️  KONFIGURASI — edit bagian ini, lalu push ke GitHub
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+var CONFIG = {
+  // ── Client ID: bisa 1 atau lebih sebagai cadangan ──────────
+  clientIds: [
+    '854334250220-h1vepbnct1p9obq6d4pvq9f76rdfo8j0.apps.googleusercontent.com',   // ← Client ID #1 (utama)
+    '751998485199-s1ddtuuhuaa36368pn8v05lmk0j5qbnt.apps.googleusercontent.com',   // ← Client ID #2 (cadangan, boleh dikosongkan)
+    '',   // ← Client ID #3 (cadangan, boleh dikosongkan)
+  ],
+
+  // ── Daftar channel kamu ────────────────────────────────────
+  channels: [
+    { name: 'Channel Utama',  color: '#FF0000' },
+    // { name: 'Channel Gaming', color: '#1A56DB' },
+    // { name: 'Channel Vlog',   color: '#1A7F3C' },
+  ]
+};
+</script>
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#FF0000;--red-d:#CC0000;--red-bg:#FFF0F0;--red-b:#FFBBBB;
+  --bg:#F7F7F7;--card:#FFF;--hover:#F2F2F2;
+  --text:#111;--t2:#555;--t3:#999;
+  --border:#E2E2E2;--border2:#C8C8C8;
+  --green:#1A7F3C;--green-bg:#E8F5ED;--green-b:#A3D9B1;
+  --orange:#B45309;--orange-bg:#FEF3C7;--orange-b:#FCD34D;
+  --blue:#1A56DB;--blue-bg:#EBF5FF;--blue-b:#93C5FD;
+  --purple:#7C3AED;--purple-bg:#F5F3FF;
+  --r:10px;--r2:7px;--r3:5px;
+  --sh:0 1px 3px rgba(0,0,0,.08);--sh2:0 4px 20px rgba(0,0,0,.13);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;color:var(--text);background:var(--bg);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0F0F0F;--card:#1C1C1C;--hover:#272727;
+  --text:#F1F1F1;--t2:#AAA;--t3:#666;
+  --border:#2E2E2E;--border2:#444;
+  --green:#4ADE80;--green-bg:#052E16;--green-b:#166534;
+  --orange:#FBBF24;--orange-bg:#1C1300;--orange-b:#92400E;
+  --blue:#60A5FA;--blue-bg:#1E3A5F;--blue-b:#1D4ED8;
+  --purple:#A78BFA;--purple-bg:#2E1065;
+  --red-bg:#2D0000;--red-b:#7F0000;
+}}
+.app{max-width:980px;margin:0 auto;padding:0 1rem 4rem}
+
+/* ─ Header ─ */
+.header{display:flex;align-items:center;gap:10px;padding:.9rem 0;margin-bottom:1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:30}
+.logo-box{width:34px;height:34px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-box svg{width:20px;height:20px;fill:#fff}
+.logo-text h1{font-size:16px;font-weight:700}
+.logo-text p{font-size:11px;color:var(--t3)}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ─ Buttons ─ */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;font-size:13px;font-weight:500;border-radius:var(--r2);border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap;box-shadow:var(--sh)}
+.btn:hover{background:var(--hover);border-color:var(--border2)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-red{background:var(--red);border-color:var(--red-d);color:#fff;box-shadow:none}
+.btn-red:hover{background:var(--red-d)}
+.btn-green{background:var(--green-bg);border-color:var(--green-b);color:var(--green)}
+.btn-green:hover{filter:brightness(.93)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-xs{padding:4px 9px;font-size:11px;font-weight:600}
+.btn-ghost{background:transparent;border-color:transparent;box-shadow:none}
+.btn-ghost:hover{background:var(--hover);border-color:var(--border)}
+
+/* ─ Channel bar ─ */
+.ch-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.25rem;flex-wrap:wrap;box-shadow:var(--sh)}
+.ch-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);white-space:nowrap}
+.ch-chips{display:flex;gap:5px;flex-wrap:wrap;flex:1}
+.ch-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);cursor:pointer;background:transparent;color:var(--t2);transition:all .15s;white-space:nowrap}
+.ch-chip:hover{border-color:var(--red);color:var(--red)}
+.ch-chip.active{background:var(--red);border-color:var(--red-d);color:#fff}
+.ch-del{font-size:15px;line-height:1;opacity:.5;padding:0 2px}
+.ch-del:hover{opacity:1}
+.btn-add-ch{padding:5px 10px;font-size:12px;border-radius:20px;border:1.5px dashed var(--border2);cursor:pointer;background:transparent;color:var(--t3);transition:all .15s}
+.btn-add-ch:hover{border-color:var(--red);color:var(--red)}
+
+/* ─ Stats ─ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;box-shadow:var(--sh)}
+.stat-n{font-size:26px;font-weight:800;line-height:1}
+.stat-l{font-size:10px;color:var(--t3);margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.c-green{color:var(--green)}.c-orange{color:var(--orange)}.c-blue{color:var(--blue)}.c-purple{color:var(--purple)}
+
+/* ─ Tabs ─ */
+.tabs{display:flex;margin-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.tab{padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;color:var(--t3);border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+/* ─ Filters ─ */
+.filters{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.chip{padding:5px 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--t2);transition:all .15s;font-weight:500}
+.chip:hover{border-color:var(--red);color:var(--red)}
+.chip.active{background:var(--red-bg);border-color:var(--red);color:var(--red);font-weight:700}
+
+/* ─ Video row (per-video tab) ─ */
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vrow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);transition:all .15s}
+.vrow:hover{border-color:var(--border2);box-shadow:var(--sh)}
+.vrow.scheduled{border-left:3px solid var(--green)}
+.vrow.open{border-color:var(--red);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.thumb{width:88px;height:50px;object-fit:cover;border-radius:5px;display:block;background:var(--hover);flex-shrink:0}
+.thumb-ph{width:88px;height:50px;border-radius:5px;background:var(--hover);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.vtitle{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.vmeta{font-size:11px;color:var(--t3);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.b-draft{background:var(--hover);color:var(--t3)}
+.b-sched{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
+.b-soon{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-b)}
+.vactions{display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0}
+.btn-unsched{padding:3px 8px;font-size:11px;border-radius:4px;border:1px solid var(--border2);color:var(--t2);background:transparent;cursor:pointer;transition:all .15s;font-weight:600}
+.btn-unsched:hover{background:#FEE2E2;border-color:#FCA5A5;color:#991B1B}
+
+/* Inline panel */
+.ipanel{background:var(--red-bg);border:1px solid var(--red-b);border-top:none;border-bottom-left-radius:var(--r2);border-bottom-right-radius:var(--r2);padding:12px 14px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.ipanel label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);margin-bottom:4px}
+.ipanel input[type=date],.ipanel input[type=time]{padding:7px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r2);background:var(--card);color:var(--text)}
+.ipanel input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(255,0,0,.1)}
+.tz-hint{font-size:10px;color:var(--t3);margin-top:3px}
+
+/* ─ BULK SCHEDULER ─ */
+.bulk-wrap{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+@media(max-width:700px){.bulk-wrap{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.panel-body{padding:14px 16px}
+
+/* Mode selector */
+.mode-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.mode-opt{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--r2);cursor:pointer;transition:all .15s}
+.mode-opt:hover{border-color:var(--border2)}
+.mode-opt.selected{border-color:var(--red);background:var(--red-bg)}
+.mode-opt input[type=radio]{margin-top:2px;accent-color:var(--red);flex-shrink:0}
+.mode-opt-text strong{font-size:13px;display:block}
+.mode-opt-text span{font-size:11px;color:var(--t3)}
+
+/* Interval controls */
+.interval-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.interval-btn{padding:6px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1.5px solid var(--border);cursor:pointer;background:transparent;color:var(--t2);transition:all .15s}
+.interval-btn:hover{border-color:var(--red);color:var(--red)}
+.interval-btn.sel{background:var(--red);border-color:var(--red-d);color:#fff}
+.custom-n{width:60px;padding:6px 8px;font-size:13px;border:1.5px solid var(--border2);border-radius:var(--r2);text-align:center;background:var(--card);color:var(--text)}
+.custom-n:focus{outline:none;border-color:var(--red)}
+
+.fg{margin-bottom:10px}
+.fg label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:5px}
+.fg input,.fg select{width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r2);background:var(--card);color:var(--text)}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(255,0,0,.1)}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* Video selection list */
+.sel-list{display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;padding-right:2px}
+.sel-list::-webkit-scrollbar{width:4px}
+.sel-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sel-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r3);background:var(--card);cursor:pointer;transition:all .15s;user-select:none}
+.sel-row:hover{border-color:var(--border2);background:var(--hover)}
+.sel-row.checked{border-color:var(--red);background:var(--red-bg)}
+.sel-row input[type=checkbox]{accent-color:var(--red);flex-shrink:0;width:15px;height:15px;cursor:pointer}
+.sel-row .sthumb{width:56px;height:32px;object-fit:cover;border-radius:3px;background:var(--hover);flex-shrink:0}
+.sel-row .sthumb-ph{width:56px;height:32px;border-radius:3px;background:var(--hover);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sel-row .stitle{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+/* reorder arrows */
+.reorder{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
+.reorder button{width:18px;height:16px;border:1px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;color:var(--t2);padding:0;transition:all .15s}
+.reorder button:hover{background:var(--hover);color:var(--text)}
+
+/* Preview table */
+.preview-wrap{margin-top:0}
+.preview-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.ptable{width:100%;border-collapse:collapse;font-size:12px}
+.ptable th{text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);border-bottom:1px solid var(--border)}
+.ptable td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ptable tr:last-child td{border-bottom:none}
+.ptable tr:hover td{background:var(--hover)}
+.ptable .pnum{width:24px;color:var(--t3);font-weight:700;font-size:11px}
+.ptable .ptitle{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.ptable .pdate{white-space:nowrap;color:var(--green);font-weight:700}
+.ptable .pdate-custom input{width:130px;padding:4px 7px;font-size:12px;border:1px solid var(--border2);border-radius:4px;background:var(--card);color:var(--text)}
+.ptable .pdate-custom input:focus{outline:none;border-color:var(--red)}
+
+/* Progress bar */
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:var(--green);border-radius:3px;transition:width .4s ease}
+
+/* Info boxes */
+.info-box{padding:9px 12px;border-radius:var(--r3);font-size:12px;line-height:1.55;margin-bottom:10px}
+.info-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b)}
+.info-orange{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-b)}
+.info-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
+
+/* Calendar */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-title{font-size:15px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-head{text-align:center;font-size:10px;font-weight:700;color:var(--t3);padding:4px 0;text-transform:uppercase;letter-spacing:.06em}
+.cal-cell{min-height:68px;padding:4px 5px;border-radius:var(--r2);border:1px solid var(--border);background:var(--card)}
+.cal-cell.dim{background:var(--hover);opacity:.4}
+.cal-cell.today{border-color:var(--red)}
+.cal-num{font-size:11px;font-weight:700;color:var(--t3);margin-bottom:2px}
+.cal-cell.today .cal-num{background:var(--red);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px}
+.cal-ev{background:var(--green-bg);color:var(--green);border-radius:3px;padding:2px 5px;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;border-left:2px solid var(--green)}
+.cal-more{font-size:10px;color:var(--t3);margin-top:2px;padding-left:4px}
+
+/* Setup */
+.setup-wrap{max-width:520px;margin:2rem auto}
+.setup-wrap h2{font-size:20px;font-weight:800;margin-bottom:8px}
+.setup-intro{font-size:13px;color:var(--t2);margin-bottom:1.5rem;line-height:1.65}
+.steps{list-style:none;margin-bottom:1.5rem}
+.steps li{display:flex;gap:10px;margin-bottom:10px;font-size:13px;line-height:1.55;color:var(--t2)}
+.sn{min-width:22px;height:22px;border-radius:50%;background:var(--red-bg);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.steps a{color:var(--blue)}.steps code{background:var(--hover);padding:1px 6px;border-radius:4px;font-size:11px;font-family:monospace}
+.divider{height:1px;background:var(--border);margin:1rem 0}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(3px)}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;width:400px;max-width:calc(100vw - 2rem);box-shadow:var(--sh2)}
+.modal h3{font-size:16px;font-weight:800;margin-bottom:1.25rem}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.cswatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .1s}
+.cswatch:hover{transform:scale(1.15)}
+.cswatch.sel{border-color:var(--text)}
+
+/* Misc */
+.empty{text-align:center;padding:3rem 1rem;color:var(--t3)}
+.loader{display:flex;align-items:center;justify-content:center;gap:10px;padding:3rem;color:var(--t2);font-size:13px}
+.spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;right:24px;z-index:200;padding:10px 16px;border-radius:var(--r2);font-size:13px;font-weight:600;box-shadow:var(--sh2);animation:slideUp .25s ease;max-width:300px}
+@keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
+.toast.err{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.toast.inf{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b)}
+.vscroll{max-height:520px;overflow-y:auto;padding-right:2px}
+.vscroll::-webkit-scrollbar{width:5px}
+.vscroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-box"><svg viewBox="0 0 90 90"><path d="M88.3,25.4c-1-3.8-4-6.8-7.8-7.8C73.8,16,45,16,45,16S16.2,16,9.5,17.7c-3.8,1-6.8,4-7.8,7.8C0,32.1,0,46,0,46s0,13.9,1.7,20.6c1,3.8,4,6.8,7.8,7.8C16.2,76,45,76,45,76s28.8,0,35.5-1.7c3.8-1,6.8-4,7.8-7.8C90,59.9,90,46,90,46S90,32.1,88.3,25.4z M36,59V33l24,13L36,59z"/></svg></div>
+      <div><div style="font-size:16px;font-weight:700">YT Scheduler</div><div style="font-size:11px;color:var(--t3)">Multi-Channel Video Planner</div></div>
+    </div>
+    <div class="hdr-r" id="hdr-r"></div>
+  </div>
+  <div id="root"></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+// Helper: ambil semua client ID yang valid
+function getClientIds(){
+  var ids=(CONFIG.clientIds||[]).filter(function(x){return x&&x.trim()});
+  if(!ids.length&&CONFIG.clientId)ids=[CONFIG.clientId];
+  return ids;
+}
+
+var A={
+  step:'setup',channels:lsCh(),active:null,token:'',
+  cidIdx:0,          // index ke getClientIds() yang sedang dipakai
+  tokenExpiry:0,     // timestamp ms kapan token expired
+  videos:[],scheduled:{},
+  filter:'all',tab:'list',
+  openPanel:null,
+  modal:null,
+  newCh:{name:'',cid:'',color:'#FF0000'},
+  calM:new Date().getMonth(),calY:new Date().getFullYear(),
+  ytChannels:[],ytSelectedChannel:null,
+  hidden:{},  // videoId -> true (disembunyikan dari daftar)
+  showHidden:false,
+  bulk:{
+    subTab:'unsched',  // 'unsched' | 'sched'
+    mode:'interval',
+    interval:1,
+    customN:3,
+    startDate:'',
+    time:'00:00',
+    selected:[],
+    customDates:{}
+  }
+};
+var COLORS=['#FF0000','#1A7F3C','#1A56DB','#9333EA','#EA580C','#0891B2','#BE185D','#CA8A04'];
+
+function lsCh(){
+  var stored=[];try{stored=JSON.parse(localStorage.getItem('yt_ch')||'[]')}catch(e){}
+  var ids=getClientIds();
+  var cid0=ids[0]||'';
+  if(cid0 && CONFIG.channels && CONFIG.channels.length){
+    CONFIG.channels.forEach(function(c){
+      var exists=stored.find(function(s){return s.name===c.name});
+      if(!exists)stored.unshift({id:'cfg_'+c.name.replace(/\s/g,'_'),name:c.name,cid:cid0,color:c.color||'#FF0000',fromConfig:true});
+      else if(!exists.cid)exists.cid=cid0;
+    });
+  }
+  if(cid0)stored.forEach(function(c){if(!c.cid)c.cid=cid0;});
+  return stored;
+}
+function saveCh(){
+  var toSave=A.channels.filter(function(c){return!c.fromConfig});
+  localStorage.setItem('yt_ch',JSON.stringify(toSave));
+}
+function saveSched(){if(!A.active)return;localStorage.setItem('yt_sc_'+A.active.id,JSON.stringify(A.scheduled))}
+function saveHidden(){if(!A.active)return;localStorage.setItem('yt_hid_'+A.active.id,JSON.stringify(A.hidden))}
+function loadHidden(ch){try{return JSON.parse(localStorage.getItem('yt_hid_'+ch.id)||'{}')}catch(e){return{}}}
+function loadSched(ch){try{return JSON.parse(localStorage.getItem('yt_sc_'+ch.id)||'{}')}catch(e){return{}}}
+function tzOffset(){return-new Date().getTimezoneOffset()/60}
+function tzLabel(){
+  var o=tzOffset();
+  // Named timezone labels
+  var names={7:'WIB',8:'WITA',9:'WIT'};
+  return names[o]||(o>=0?'UTC+'+o:'UTC'+o);
+}
+// FIXED: new Date('YYYY-MM-DDTHH:MM:SS') tanpa timezone suffix
+// sudah diinterpretasi browser sebagai LOCAL time,
+// jadi .toISOString() langsung menghasilkan UTC yang benar.
+function localToUTC(date,time){
+  return new Date(date+'T'+(time||'00:00')+':00').toISOString();
+}
+function utcToLocal(iso){
+  if(!iso)return{date:'',time:''};
+  var d=new Date(iso);
+  return{date:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),time:pad(d.getHours())+':'+pad(d.getMinutes())};
+}
+function pad(n){return String(n).padStart(2,'0')}
+function addDays(dateStr,days){var d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+days);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function fmtDate(iso){if(!iso)return'';return new Date(iso).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function fmtShort(dateStr){if(!dateStr)return'-';var d=new Date(dateStr+'T12:00:00');return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}
+function isSoon(iso){if(!iso)return false;var d=new Date(iso)-Date.now();return d>0&&d<7*864e5}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function $(id){return document.getElementById(id)}
+function val(id){return($( id)||{}).value||''}
+function today(){return new Date().toISOString().split('T')[0]}
+function tomorrow(){var d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+
+function toast(msg,type){
+  var el=document.createElement('div');el.className='toast '+(type||'inf');el.textContent=msg;
+  $('toasts').appendChild(el);
+  setTimeout(function(){el.style.transition='all .3s';el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(function(){el.remove()},320)},3200);
+}
+
+/* ─ GIS / API ─ */
+function loadGIS(){
+  return new Promise(function(res,rej){
+    if(window.google&&window.google.accounts){res();return;}
+    var s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;
+    s.onload=res;s.onerror=function(){rej(new Error('Gagal load Google'))};
+    document.head.appendChild(s);
+  });
+}
+async function signIn(ch, cidIdxOverride){
+  try{
+    await loadGIS();
+    var ids=getClientIds();
+    // Ch may have own cid (from config), otherwise use rotating cidIdx
+    var cid=ch.cid;
+    if(!cid){
+      if(cidIdxOverride!==undefined)A.cidIdx=cidIdxOverride;
+      cid=ids[A.cidIdx%Math.max(ids.length,1)]||'';
+    }
+    if(!cid){toast('Client ID belum diisi di CONFIG','err');return;}
+    google.accounts.oauth2.initTokenClient({
+      client_id:cid,
+      scope:'https://www.googleapis.com/auth/youtube',
+      callback:async function(r){
+        if(r.error){
+          // Try next clientId if available
+          var nextIdx=(A.cidIdx+1);
+          if(ids.length>1 && nextIdx<ids.length){
+            toast('Client ID #'+(A.cidIdx+1)+' gagal, coba #'+(nextIdx+1)+'...','inf');
+            A.cidIdx=nextIdx;
+            setTimeout(function(){signIn(ch,nextIdx)},500);
+          }else{
+            toast('Login gagal: '+r.error,'err');
+          }
+          return;
+        }
+        A.token=r.access_token;
+        A.tokenExpiry=Date.now()+(r.expires_in||3600)*1000;
+        A.active=ch;A.scheduled=loadSched(ch);A.hidden=loadHidden(ch);
+        A.step='loading';render();await pickChannel();
+      }
+    }).requestAccessToken({prompt:'select_account'});
+  }catch(e){toast('Error: '+e.message,'err');}
+}
+// Try next client ID manually
+function rotateClientId(){
+  var ids=getClientIds();
+  if(ids.length<=1){toast('Hanya ada 1 Client ID di config','inf');return;}
+  A.cidIdx=(A.cidIdx+1)%ids.length;
+  toast('Beralih ke Client ID #'+(A.cidIdx+1),'inf');
+  if(A.active)signIn(A.active,A.cidIdx);
+}
+// After login: fetch all YT channels for this account, let user pick
+async function pickChannel(){
+  try{
+    // Ambil info channel yang sedang aktif (sesuai akun yg dipilih saat OAuth)
+    var r=await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&mine=true',
+      {headers:{Authorization:'Bearer '+A.token}});
+    var d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    var channels=d.items||[];
+    A.ytChannels=channels;
+    A.ytSelectedChannel=channels[0]||null;
+    // Selalu tampilkan konfirmasi channel dulu
+    A.step='pick_channel';
+    render();
+  }catch(e){
+    A.ytChannels=[];A.ytSelectedChannel=null;
+    await fetchVideos();
+  }
+}
+
+async function confirmYtChannel(idx){
+  A.step='loading';render();
+  await fetchVideos();
+}
+
+function reloginDifferentChannel(){
+  // Force Google to show account/channel picker again
+  var activeCh=A.active;
+  A.token='';A.tokenExpiry=0;A.ytChannels=[];A.ytSelectedChannel=null;
+  if(activeCh){
+    // Re-trigger OAuth with prompt=select_account (already set globally)
+    signIn(activeCh);
+  }else{
+    A.step='setup';render();
+  }
+}
+
+function renderPickChannel(){
+  var ch=A.ytSelectedChannel;
+  var snap=ch?ch.snippet||{}:{};
+  var stats=ch?ch.statistics||{}:{};
+  var thumb=snap.thumbnails&&(snap.thumbnails.medium||snap.thumbnails.default);
+  var name=snap.title||'Channel tidak diketahui';
+  var handle=snap.customUrl?snap.customUrl:'';
+  if(handle&&handle[0]!=='@')handle='@'+handle;
+  var subs=stats.subscriberCount?parseInt(stats.subscriberCount).toLocaleString('id-ID')+' subscriber':'';
+
+  var h='<div style="max-width:460px;margin:2rem auto">';
+  h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--sh)">';
+  h+='<h2 style="font-size:17px;font-weight:700;margin-bottom:4px">Konfirmasi Channel</h2>';
+  h+='<p style="font-size:13px;color:var(--t2);margin-bottom:1.25rem;line-height:1.55">'+
+    'Apakah ini channel yang ingin kamu jadwalkan?</p>';
+
+  // Channel card
+  h+='<div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--hover);border-radius:var(--r2);margin-bottom:1.25rem">';
+  if(ch){
+    h+=(thumb?'<img src="'+esc(thumb.url)+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0">':
+      '<div style="width:56px;height:56px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;flex-shrink:0">'+esc(name[0])+'</div>');
+    h+='<div>';
+    h+='<div style="font-size:15px;font-weight:700">'+esc(name)+'</div>';
+    if(handle)h+='<div style="font-size:12px;color:var(--t3);margin-top:2px">'+esc(handle)+'</div>';
+    if(subs)h+='<div style="font-size:12px;color:var(--t3);margin-top:1px">'+esc(subs)+'</div>';
+    h+='</div>';
+  }else{
+    h+='<div style="font-size:13px;color:var(--t3)">Tidak ada channel ditemukan.</div>';
+  }
+  h+='</div>';
+
+  // Action buttons
+  h+='<div style="display:flex;gap:8px">';
+  h+='<button class="btn btn-red" style="flex:1" onclick="confirmYtChannel(0)">✓ Ya, Lanjutkan</button>';
+  h+='</div>';
+
+  // Help: wrong channel
+  h+='<div style="margin-top:14px;padding:12px;background:var(--orange-bg);border:1px solid var(--orange-b);border-radius:var(--r2)">';
+  h+='<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px">⚠ Channel salah?</div>';
+  h+='<div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px">'+
+    'Jika channel di atas bukan yang kamu mau, klik tombol di bawah dan <b>pilih identitas YouTube yang berbeda</b> di popup Google.'+
+    '<br><br>Contoh: jika muncul opsi "<b>NamaChannel (YouTube)</b>", pilih itu — bukan akun Gmail.'+
+  '</div>';
+  h+='<button class="btn btn-sm" onclick="reloginDifferentChannel()">🔄 Ganti Channel / Akun</button>';
+  h+='</div>';
+
+  h+='</div></div>';
+  return h;
+}
+
+async function fetchVideos(){
+  try{
+    // ── Langkah 1: Ambil SEMUA video pakai pagination ──────────
+    var allSearchItems=[];
+    var pageToken='';
+    do{
+      var url='https://www.googleapis.com/youtube/v3/search?part=snippet&forMine=true&type=video&maxResults=50&order=date';
+      if(pageToken)url+='&pageToken='+encodeURIComponent(pageToken);
+      var r1=await fetch(url,{headers:{Authorization:'Bearer '+A.token}});
+      var d1=await r1.json();
+      if(d1.error)throw new Error(d1.error.message);
+      if(d1.items&&d1.items.length)allSearchItems=allSearchItems.concat(d1.items);
+      pageToken=d1.nextPageToken||'';
+    }while(pageToken);
+
+    if(!allSearchItems.length){A.videos=[];A.step='dashboard';render();return;}
+
+    // ── Langkah 2: Fetch detail video dalam batch 50 ───────────
+    var allVideos=[];
+    for(var b=0;b<allSearchItems.length;b+=50){
+      var batch=allSearchItems.slice(b,b+50);
+      var ids=batch.map(function(i){return i.id.videoId}).filter(Boolean).join(',');
+      if(!ids)continue;
+      var r2=await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,status,contentDetails&id='+ids,
+        {headers:{Authorization:'Bearer '+A.token}});
+      var d2=await r2.json();
+      if(d2.error)throw new Error(d2.error.message);
+      allVideos=allVideos.concat(d2.items||[]);
+    }
+
+    A.videos=allVideos;
+    // ── Langkah 3: Baca jadwal yang sudah ada di YouTube ───────
+    A.videos.forEach(function(v){if(v.status&&v.status.publishAt)A.scheduled[v.id]=v.status.publishAt;});
+    saveSched();A.step='dashboard';render();
+  }catch(e){
+    var msg=e.message||'';
+    if(msg.includes('403'))msg='Akses ditolak — pastikan YouTube Data API v3 aktif di Google Cloud';
+    else if(msg.includes('401'))msg='Token tidak valid — coba Sign In ulang';
+    else if(msg.includes('quota'))msg='Quota API habis — coba lagi besok atau ganti Client ID';
+    toast('Gagal memuat: '+msg,'err');
+    A.step='pick_channel';render();
+  }
+}
+async function apiSet(videoId,publishAt){
+  var r=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status',{
+    method:'PUT',headers:{Authorization:'Bearer '+A.token,'Content-Type':'application/json'},
+    body:JSON.stringify({id:videoId,status:{privacyStatus:'private',publishAt:publishAt}})
+  });
+  var d=await r.json();if(d.error)throw new Error(d.error.message);
+}
+async function apiUnset(videoId){
+  var r=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status',{
+    method:'PUT',headers:{Authorization:'Bearer '+A.token,'Content-Type':'application/json'},
+    body:JSON.stringify({id:videoId,status:{privacyStatus:'private'}})
+  });
+  var d=await r.json();if(d.error)throw new Error(d.error.message);
+}
+
+/* ─ Per-video actions ─ */
+async function doSchedule(vid){
+  var date=val('d-'+vid),time=val('t-'+vid)||'10:00';
+  if(!date){toast('Pilih tanggal dulu','err');return;}
+  var btn=$('save-'+vid);if(btn){btn.disabled=true;btn.textContent='Menyimpan...';}
+  try{
+    var pub=localToUTC(date,time);
+    await apiSet(vid,pub);
+    A.scheduled[vid]=pub;saveSched();A.openPanel=null;
+    toast('✓ Dijadwalkan: '+fmtDate(pub),'ok');render();
+  }catch(e){toast('Gagal: '+e.message,'err');if(btn){btn.disabled=false;btn.textContent='Simpan';}}
+}
+async function doUnschedule(vid){
+  try{await apiUnset(vid);delete A.scheduled[vid];saveSched();toast('Jadwal dihapus','inf');render();}
+  catch(e){toast('Error: '+e.message,'err');}
+}
+function openPanel(id){A.openPanel=(A.openPanel===id?null:id);render();}
+
+/* ─ Bulk actions ─ */
+function getBulkPreview(){
+  var b=A.bulk,sel=b.selected,time=val('b-time')||b.time;
+  var result=[];
+  if(b.mode==='interval'){
+    var start=val('b-start')||b.startDate;
+    if(!start||!sel.length)return[];
+    for(var i=0;i<sel.length;i++){
+      var dateStr=addDays(start,i*b.interval);
+      result.push({id:sel[i],date:dateStr,time:time,publishAt:localToUTC(dateStr,time)});
+    }
+  }else{
+    for(var i=0;i<sel.length;i++){
+      var id=sel[i];
+      var dateStr=val('bc-'+id)||b.customDates[id]||'';
+      if(dateStr)result.push({id:id,date:dateStr,time:time,publishAt:localToUTC(dateStr,time)});
+    }
+  }
+  return result;
+}
+
+async function applyBulk(){
+  // read current form values
+  A.bulk.time=val('b-time')||A.bulk.time;
+  if(A.bulk.mode==='interval')A.bulk.startDate=val('b-start')||A.bulk.startDate;
+  if(A.bulk.mode==='custom'){
+    A.bulk.selected.forEach(function(id){
+      var v=val('bc-'+id);if(v)A.bulk.customDates[id]=v;
+    });
+  }
+  var preview=getBulkPreview();
+  if(!preview.length){toast('Tidak ada jadwal untuk diterapkan','err');return;}
+  var btn=$('bulk-apply');if(btn){btn.disabled=true;btn.textContent='Menyimpan...';}
+  var ok=0,fail=0;
+  for(var i=0;i<preview.length;i++){
+    try{
+      await apiSet(preview[i].id,preview[i].publishAt);
+      A.scheduled[preview[i].id]=preview[i].publishAt;ok++;
+      if(btn)btn.textContent='Menyimpan '+ok+'/'+preview.length+'...';
+    }catch(e){fail++;}
+  }
+  saveSched();
+  if(fail===0)toast('✓ '+ok+' video berhasil dijadwalkan!','ok');
+  else toast(ok+' berhasil, '+fail+' gagal','inf');
+  if(btn){btn.disabled=false;btn.textContent='Terapkan Jadwal';}
+  render();
+}
+
+function toggleBulkSel(id){
+  var idx=A.bulk.selected.indexOf(id);
+  if(idx>-1)A.bulk.selected.splice(idx,1);
+  else A.bulk.selected.push(id);
+  render();
+}
+function selectAllBulk(){
+  var unscheduled=getDrafts().filter(function(v){return!A.scheduled[v.id]});
+  if(A.bulk.selected.length===unscheduled.length&&unscheduled.length>0)A.bulk.selected=[];
+  else A.bulk.selected=unscheduled.map(function(v){return v.id});
+  render();
+}
+function moveUp(id){
+  var arr=A.bulk.selected,i=arr.indexOf(id);
+  if(i>0){arr.splice(i,1);arr.splice(i-1,0,id);}render();
+}
+function moveDown(id){
+  var arr=A.bulk.selected,i=arr.indexOf(id);
+  if(i<arr.length-1){arr.splice(i,1);arr.splice(i+1,0,id);}render();
+}
+function setInterval2(n){
+  // save current form values before re-render
+  var bs=val('b-start'),bt=val('b-time');
+  if(bs)A.bulk.startDate=bs;if(bt)A.bulk.time=bt;
+  A.bulk.interval=n;render();
+}
+function setMode(m){
+  var bs=val('b-start'),bt=val('b-time');
+  if(bs)A.bulk.startDate=bs;if(bt)A.bulk.time=bt;
+  A.bulk.mode=m;render();
+}
+
+/* ─ Misc ─ */
+function hideVideo(id){A.hidden[id]=true;saveHidden();render();}
+function unhideVideo(id){delete A.hidden[id];saveHidden();render();}
+function signOut(){A.token='';A.videos=[];A.scheduled={};A.hidden={};A.step='setup';A.active=null;A.ytChannels=[];A.ytSelectedChannel=null;render();toast('Signed out','inf');}
+async function refresh(){A.step='loading';render();await fetchVideos();}
+function switchCh(ch){A.token='';A.videos=[];A.scheduled={};A.step='setup';A.active=null;render();setTimeout(function(){signIn(ch)},100);}
+function addChannel(){
+  var name=val('nc-name').trim()||'Channel Baru';
+  var cid=val('nc-cid').trim()||getClientIds()[0]||'';
+  if(!cid){toast('Masukkan Client ID','err');return;}
+  var ch={id:Date.now().toString(),name:name,cid:cid,color:A.newCh.color};
+  A.channels.push(ch);saveCh();A.modal=null;A.newCh={name:'',cid:'',color:'#FF0000'};
+  toast('Channel ditambahkan!','ok');render();setTimeout(function(){signIn(ch)},150);
+}
+function delChannel(id){
+  A.channels=A.channels.filter(function(c){return c.id!==id});saveCh();
+  if(A.active&&A.active.id===id){A.token='';A.videos=[];A.scheduled={};A.step='setup';A.active=null;}
+  render();toast('Channel dihapus','inf');
+}
+function getDrafts(){
+  // search.list?forMine=true sudah hanya return video milik channel aktif
+  // Filter: private (draft & scheduled) dan unlisted
+  // Video public tidak masuk karena search?forMine hanya return yg bisa diakses owner
+  return A.videos.filter(function(v){
+    var s=v.status||{};
+    if(A.hidden[v.id])return false;
+    return s.privacyStatus==='private'||s.privacyStatus==='unlisted';
+  });
+}
+
+function renderHiddenList(){
+  var hiddenVideos=A.videos.filter(function(v){return A.hidden[v.id]});
+  if(!hiddenVideos.length)return'';
+  var h='<div style="margin-bottom:10px;padding:10px 12px;background:var(--hover);border-radius:var(--r2);border:1px solid var(--border)">';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Video Tersembunyi</div>';
+  hiddenVideos.forEach(function(v){
+    var title=getTitle(v);
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">';
+    h+='<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t2)">'+esc(title)+'</span>';
+    h+='<button class="btn btn-xs btn-ghost" onclick="unhideVideo(\''+v.id+'\')" style="font-size:11px;color:var(--blue);flex-shrink:0">Tampilkan</button>';
+    h+='</div>';
+  });
+  h+='<div style="margin-top:8px"><button class="btn btn-xs btn-ghost" onclick="Object.keys(A.hidden).forEach(function(id){delete A.hidden[id]});saveHidden();render()">Tampilkan Semua</button></div>';
+  h+='</div>';
+  return h;
+}
+
+function getFiltered(){
+  var d=getDrafts();
+  if(A.filter==='scheduled')return d.filter(function(v){return A.scheduled[v.id]});
+  if(A.filter==='unscheduled')return d.filter(function(v){return!A.scheduled[v.id]});
+  return d;
+}
+function getThumb(v){var t=v.snippet&&v.snippet.thumbnails;return t&&(t.medium||t.default);}
+function getTitle(v){return(v.snippet&&v.snippet.title)||'Untitled'}
+
+/* ─ RENDER ─ */
+/* ── GitHub self-update ── */
+function ghGet(key){return localStorage.getItem('gh_'+key)||''}
+function ghSet(key,val){localStorage.setItem('gh_'+key,val)}
+
+function toB64(str){
+  // UTF-8 safe base64
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+async function ghFetchFile(){
+  var token=ghGet('token'),repo=ghGet('repo');
+  if(!token||!repo)throw new Error('GitHub token / repo belum diset');
+  var r=await fetch('https://api.github.com/repos/'+repo+'/contents/index.html',{
+    headers:{Authorization:'token '+token,'Accept':'application/vnd.github.v3+json'}
+  });
+  if(!r.ok)throw new Error('GitHub API error '+r.status+': pastikan token & repo benar');
+  return r.json();
+}
+
+async function saveConfigToGitHub(){
+  var clientId=val('cfg-cid').trim();
+  if(!clientId){toast('Masukkan Client ID','err');return;}
+
+  // Collect channels from dynamic inputs
+  var chInputs=document.querySelectorAll('.ch-cfg-row');
+  var channels=[];
+  chInputs.forEach(function(row){
+    var n=row.querySelector('.ch-cfg-name'),c=row.querySelector('.ch-cfg-color');
+    if(n&&n.value.trim())channels.push({name:n.value.trim(),color:c?c.value:'#FF0000'});
+  });
+  if(!channels.length){toast('Tambahkan minimal 1 channel','err');return;}
+
+  var token=val('cfg-token').trim(),repo=val('cfg-repo').trim();
+  if(!token||!repo){toast('Isi GitHub Token dan Repo','err');return;}
+  ghSet('token',token);ghSet('repo',repo);
+
+  var btn=$('btn-save-cfg');
+  btn.disabled=true;btn.textContent='Menyimpan ke GitHub...';
+
+  try{
+    var fileData=await ghFetchFile();
+    var current=decodeURIComponent(escape(atob(fileData.content.replace(/\n/g,''))));
+    var sha=fileData.sha;
+
+    // Build new CONFIG block
+    var chLines=channels.map(function(c){
+      return "    { name: '"+c.name.replace(/'/g,"\\'")+"', color: '"+c.color+"' }";
+    }).join(',\n');
+    var allCids=getClientIds();
+    if(clientId&&!allCids.includes(clientId))allCids.unshift(clientId);
+    if(!allCids.length)allCids=[''];
+    var cidLines=allCids.concat(['','']).slice(0,3).map(function(c,i){
+      return "    '"+c+"',   // Client ID #"+(i+1)+(i===0?' (utama)':' (cadangan)');
+    }).join('\n');
+    var newConfig="var CONFIG = {\n  clientIds: [\n"+cidLines+"\n  ],\n\n  channels: [\n"+chLines+"\n  ]\n};";
+
+    var newContent=current.replace(/var CONFIG = \{[\s\S]*?\};/,newConfig);
+    if(newContent===current)throw new Error('Tidak bisa menemukan blok CONFIG di file. Pastikan filenya tidak diubah manual.');
+
+    var r=await fetch('https://api.github.com/repos/'+repo+'/contents/index.html',{
+      method:'PUT',
+      headers:{Authorization:'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+      body:JSON.stringify({message:'Update YT Scheduler config via app',content:toB64(newContent),sha:sha})
+    });
+    var rd=await r.json();
+    if(!r.ok)throw new Error(rd.message||'GitHub error '+r.status);
+
+    toast('✓ Berhasil disimpan ke GitHub!','ok');
+    A.modal=null;
+    // Reload after short delay so GitHub Pages can deploy
+    setTimeout(function(){
+      if(confirm('Config tersimpan! Muat ulang halaman sekarang?'))location.reload();
+    },1500);
+  }catch(e){
+    toast('Gagal: '+e.message,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Simpan ke GitHub';}
+  }
+}
+
+function addChConfigRow(){
+  var l=$('ch-cfg-list');if(!l)return;
+  var row=document.createElement('div');
+  row.className='ch-cfg-row';
+  row.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:6px';
+  row.innerHTML='<input class="ch-cfg-name" type="text" placeholder="Nama channel baru" style="flex:1;padding:7px 9px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r2);background:var(--card);color:var(--text)">'+
+    '<input class="ch-cfg-color" type="color" value="#FF0000" style="width:36px;height:34px;border:1px solid var(--border2);border-radius:var(--r2);cursor:pointer;padding:2px">'+
+    '<button onclick="this.parentNode.remove()" style="width:28px;height:28px;border:1px solid var(--border2);border-radius:4px;background:transparent;cursor:pointer;color:var(--t3);font-size:16px">×</button>';
+  l.appendChild(row);
+}
+
+function renderCfgModal(){
+  var token=ghGet('token'),repo=ghGet('repo');
+  // Build channel rows from CONFIG + existing channels
+  var existingCh=CONFIG.channels&&CONFIG.channels.length?CONFIG.channels:
+    A.channels.filter(function(c){return!c.fromConfig}).slice(0,8);
+  if(!existingCh.length)existingCh=[{name:'',color:'#FF0000'}];
+
+  var chRows=existingCh.map(function(c,i){
+    return'<div class="ch-cfg-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'+
+      '<input class="ch-cfg-name" type="text" placeholder="Nama channel '+(i+1)+'" value="'+esc(c.name)+'" style="flex:1;padding:7px 9px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r2);background:var(--card);color:var(--text)">'+
+      '<input class="ch-cfg-color" type="color" value="'+esc(c.color||'#FF0000')+'" style="width:36px;height:34px;border:1px solid var(--border2);border-radius:var(--r2);cursor:pointer;padding:2px">'+
+      '<button onclick="this.closest(\'.ch-cfg-row\').remove()" style="width:28px;height:28px;border:1px solid var(--border2);border-radius:4px;background:transparent;cursor:pointer;color:var(--t3);font-size:16px;display:flex;align-items:center;justify-content:center">×</button>'+
+    '</div>';
+  }).join('');
+
+  return'<div class="overlay" onclick="if(event.target===this){A.modal=null;render()}">'+
+  '<div class="modal" style="width:480px">'+
+    '<h3>⚙️ Simpan Config ke GitHub</h3>'+
+    '<div class="info-blue" style="margin-bottom:14px;font-size:12px">'+
+      'Config (Client ID + channel) akan disimpan langsung ke file <code>index.html</code> di repo GitHub-mu. '+
+      'GitHub Token hanya disimpan di browser ini, <b>tidak</b> masuk ke file GitHub.'+
+    '</div>'+
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+      '<div class="fg" style="margin:0"><label>GitHub Repo</label>'+
+        '<input id="cfg-repo" type="text" placeholder="username/repo-name" value="'+esc(repo)+'"></div>'+
+      '<div class="fg" style="margin:0"><label>Personal Access Token '+
+        '<a href="https://github.com/settings/tokens/new?scopes=contents&description=YT+Scheduler" target="_blank" style="color:var(--blue);font-size:10px;font-weight:400">Buat token →</a></label>'+
+        '<input id="cfg-token" type="password" placeholder="ghp_xxxxxxxxxxxx" value="'+esc(token)+'"></div>'+
+    '</div>'+
+
+    '<div class="fg"><label>Google OAuth Client ID</label>'+
+      '<input id="cfg-cid" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" value="'+esc(getClientIds()[0]||'')+'"></div>'+
+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:7px">Daftar Channel</div>'+
+    '<div id="ch-cfg-list">'+chRows+'</div>'+
+    '<button onclick="addChConfigRow()" '+
+      'class="btn btn-sm btn-ghost" style="margin-bottom:10px">+ Tambah Channel</button>'+
+
+    '<div class="modal-footer">'+
+      '<button class="btn btn-sm" onclick="A.modal=null;render()">Batal</button>'+
+      '<button class="btn btn-red btn-sm" id="btn-save-cfg" onclick="saveConfigToGitHub()">💾 Simpan ke GitHub</button>'+
+    '</div>'+
+  '</div></div>';
+}
+
+function tokenRemainingLabel(){
+  if(!A.tokenExpiry)return'';
+  var ms=A.tokenExpiry-Date.now();
+  if(ms<=0)return'<span style="color:var(--red);font-size:11px;font-weight:700;padding:2px 7px;background:var(--red-bg);border-radius:4px">⚠ Expired</span>';
+  var m=Math.floor(ms/60000);
+  var color=m<10?'var(--red)':(m<30?'var(--orange)':'var(--green)');
+  var bg=m<10?'var(--red-bg)':(m<30?'var(--orange-bg)':'var(--green-bg)');
+  return'<span style="font-size:11px;font-weight:700;color:'+color+';padding:2px 7px;background:'+bg+';border-radius:4px">⏱ '+m+' mnt</span>';
+}
+
+function renderHeader(){
+  var r=$('hdr-r');if(!r)return;
+  var cfgBtn='<button class="btn btn-sm btn-ghost" onclick="A.modal=\'cfg\';render()" title="Simpan config ke GitHub">⚙️ Config</button>';
+  if(A.step==='dashboard'){
+    var ids=getClientIds();
+    var cidInfo=ids.length>1?'<span style="font-size:10px;color:var(--t3);padding:2px 6px;border:1px solid var(--border);border-radius:4px">CID #'+(A.cidIdx+1)+'/'+ids.length+'</span>':'';
+    var rotBtn=ids.length>1?'<button class="btn btn-xs btn-ghost" onclick="rotateClientId()" title="Ganti ke Client ID berikutnya">⇄ Ganti CID</button>':'';
+    r.innerHTML=
+      '<span style="font-size:12px;color:var(--t3)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span>'+esc(A.active?A.active.name:'')+'</span>'+
+      tokenRemainingLabel()+' '+cidInfo+rotBtn+
+      '<button class="btn btn-sm btn-ghost" onclick="refresh()">↻</button>'+
+      cfgBtn+
+      '<button class="btn btn-sm btn-ghost" onclick="signOut()">Sign Out</button>';
+  }else{
+    r.innerHTML=cfgBtn;
+  }
+}
+
+// Ticker: update token label setiap 30 detik
+setInterval(function(){
+  if(A.step==='dashboard'){
+    renderHeader();
+    var ms=A.tokenExpiry?A.tokenExpiry-Date.now():999999;
+    // Warn at < 5 menit
+    if(ms>0&&ms<5*60000&&!A._warned){
+      A._warned=true;
+      var ids=getClientIds();
+      if(ids.length>1)toast('Token hampir habis — siap otomatis ganti Client ID','inf');
+      else toast('Token habis dalam <5 menit, siap-siap Sign In ulang','inf');
+    }
+    // Auto-rotate & re-sign when expired
+    if(A.tokenExpiry&&Date.now()>A.tokenExpiry&&A.active){
+      A.tokenExpiry=0;A._warned=false;
+      var ids=getClientIds();
+      if(ids.length>1){
+        A.cidIdx=(A.cidIdx+1)%ids.length;
+        toast('Token expired → otomatis ganti ke Client ID #'+(A.cidIdx+1),'inf');
+        signIn(A.active,A.cidIdx);
+      }else{
+        toast('Token expired — silakan Sign In ulang','inf');
+        renderHeader();
+      }
+    }
+  }
+},30000);
+
+function renderChBar(){
+  if(!A.channels.length)return'';
+  window._chm={};A.channels.forEach(function(c){window._chm[c.id]=c;});
+  var chips=A.channels.map(function(ch){
+    var act=A.active&&A.active.id===ch.id;
+    return'<span class="ch-chip'+(act?' active':'')+'"'+(!act?' style="border-left:3px solid '+esc(ch.color)+'"':'')+' onclick="switchCh(window._chm[\''+ch.id+'\'])">'+
+      esc(ch.name)+'<span class="ch-del" onclick="event.stopPropagation();delChannel(\''+ch.id+'\')">×</span></span>';
+  }).join('');
+  return'<div class="ch-bar"><span class="ch-label">Channel:</span><div class="ch-chips">'+chips+'</div><button class="btn-add-ch" onclick="A.modal=\'addch\';render()">+ Tambah</button></div>';
+}
+
+function renderSetup(){
+  var h=renderChBar();
+  if(A.channels.length){
+    // Tampilkan tombol Sign In untuk tiap channel
+    var btns=A.channels.map(function(ch){
+      return '<button class="btn btn-red" style="font-size:13px" onclick="switchCh(window._chm[\''+ch.id+'\'])">'+
+        '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+esc(ch.color)+';margin-right:6px;vertical-align:middle"></span>'+
+        'Masuk sebagai <b>'+esc(ch.name)+'</b></button>';
+    }).join('');
+    h+='<div style="text-align:center;padding:2rem 1rem">'+
+      '<p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Pilih channel untuk mulai:</p>'+
+      '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;max-width:300px;margin:0 auto">'+btns+'</div>'+
+    '</div>';
+    return h;
+  }
+  // No config yet — show two paths
+  h+='<div class="setup-wrap"><div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--sh)">'+
+  '<h2>🎬 Setup YouTube Scheduler</h2>'+
+  '<p class="setup-intro">Hubungkan channel YouTube-mu. Gratis, semua berjalan di browser.</p>'+
+
+  // PATH A — recommended: save to GitHub
+  '<div style="border:2px solid var(--red);border-radius:var(--r2);padding:14px;margin-bottom:12px">'+
+  '<div style="font-size:13px;font-weight:700;margin-bottom:4px">🚀 Cara Disarankan — Simpan ke GitHub</div>'+
+  '<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.55">Config tersimpan di file GitHub-mu. Buka dari browser/device apapun langsung jalan tanpa setup ulang.</div>'+
+  '<button class="btn btn-red btn-sm" onclick="A.modal=\'cfg\';render()">⚙️ Setup & Simpan ke GitHub</button>'+
+  '</div>'+
+
+  // PATH B — manual
+  '<div style="border:1px solid var(--border);border-radius:var(--r2);padding:14px">'+
+  '<div style="font-size:13px;font-weight:700;margin-bottom:4px">📱 Setup Manual — Hanya Browser Ini</div>'+
+  '<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.55">Config disimpan di browser ini saja. Ganti browser atau device perlu setup ulang.</div>'+
+  '<ul class="steps" style="margin-bottom:12px">'+
+  '<li><div class="sn">1</div><div>Buka <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a> → buat project → enable <b>YouTube Data API v3</b></div></li>'+
+  '<li><div class="sn">2</div><div><b>Credentials</b> → OAuth 2.0 Client ID → Web Application → tambahkan URL hosting di Authorized Origins</div></li>'+
+  '<li><div class="sn">3</div><div><b>OAuth consent screen</b> → Test users → tambahkan Gmail-mu</div></li>'+
+  '</ul>'+
+  '<div class="fg"><label>Nama Channel</label><input id="s-name" type="text" placeholder="Channel Utama"></div>'+
+  '<div class="fg"><label>OAuth Client ID</label><input id="s-cid" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>'+
+  '<button class="btn btn-sm" onclick="setupFirst()">Hubungkan →</button>'+
+  '</div>'+
+
+  '</div></div>';
+  return h;
+}
+function setupFirst(){
+  var name=val('s-name').trim()||'Channel Saya',cid=val('s-cid').trim();
+  if(!cid){toast('Masukkan Client ID','err');return;}
+  var ch={id:Date.now().toString(),name:name,cid:cid,color:'#FF0000'};
+  A.channels.push(ch);saveCh();render();setTimeout(function(){signIn(ch)},100);
+}
+
+function renderStats(){
+  var d=getDrafts(),sc=Object.keys(A.scheduled).length;
+  var up=d.filter(function(v){return isSoon(A.scheduled[v.id])}).length;
+  return'<div class="stats">'+
+    '<div class="stat"><div class="stat-n">'+d.length+'</div><div class="stat-l">Total Draft</div></div>'+
+    '<div class="stat"><div class="stat-n c-green">'+sc+'</div><div class="stat-l">Terjadwal</div></div>'+
+    '<div class="stat"><div class="stat-n c-orange">'+(d.length-sc)+'</div><div class="stat-l">Belum Jadwal</div></div>'+
+    '<div class="stat"><div class="stat-n c-blue">'+up+'</div><div class="stat-l">Rilis 7 Hari</div></div>'+
+  '</div>';
+}
+
+/* Per-video tab */
+function renderPerVideo(){
+  var filtered=getFiltered(),d=getDrafts(),sc=Object.keys(A.scheduled).length;
+  var hiddenCount=Object.keys(A.hidden).length;
+  var h='<div class="filters">'+
+    '<button class="chip'+(A.filter==='all'?' active':'')+'" onclick="A.filter=\'all\';render()">Semua ('+d.length+')</button>'+
+    '<button class="chip'+(A.filter==='scheduled'?' active':'')+'" onclick="A.filter=\'scheduled\';render()">✓ Terjadwal ('+sc+')</button>'+
+    '<button class="chip'+(A.filter==='unscheduled'?' active':'')+'" onclick="A.filter=\'unscheduled\';render()">Draft ('+(d.length-sc)+')</button>'+
+    (hiddenCount?'<button class="chip" onclick="A.showHidden=!A.showHidden;render()" style="margin-left:auto;font-size:11px">'+
+      (A.showHidden?'▲':'▼')+' Tersembunyi ('+hiddenCount+')</button>':'')+'</div>'+
+    (A.showHidden&&hiddenCount?renderHiddenList():'');
+  if(!filtered.length){
+    var allCount=A.videos.length;
+    return h+'<div class="empty"><div style="font-size:38px;margin-bottom:8px">📭</div>'+
+      '<p style="font-size:13px">Tidak ada video draft ditemukan.</p>'+
+      (allCount>0?'<p style="font-size:12px;color:var(--t3);margin-top:6px">'+allCount+' video terdeteksi dari channel, tapi semua berstatus public.<br>Pastikan video sudah diupload sebagai <b>Private</b> di YouTube Studio.</p>':'<p style="font-size:12px;color:var(--t3);margin-top:6px">Tidak ada video di channel ini.</p>')+
+    '</div>';
+  }
+  h+='<div class="vlist vscroll">';
+  filtered.forEach(function(v){
+    var sched=A.scheduled[v.id],isOpen=A.openPanel===v.id;
+    var thumb=getThumb(v),title=getTitle(v),existing=sched?utcToLocal(sched):{date:tomorrow(),time:'00:00'};
+    h+='<div class="vrow'+(sched?' scheduled':'')+(isOpen?' open':'')+'">';
+    h+=thumb?'<img class="thumb" src="'+esc(thumb.url)+'" alt="" loading="lazy">':'<div class="thumb-ph">▶</div>';
+    h+='<div style="min-width:0"><div class="vtitle" title="'+esc(title)+'">'+esc(title)+'</div>'+
+      '<div class="vmeta">'+(sched?'<span class="badge '+(isSoon(sched)?'b-soon':'b-sched')+'">'+(isSoon(sched)?'⏰ ':'')+esc(fmtDate(sched))+'</span>':'<span class="badge b-draft">📝 Draft</span>')+'</div></div>';
+    h+='<div class="vactions">';
+    if(sched)h+='<button class="btn-unsched" onclick="doUnschedule(\''+v.id+'\')">✕ Hapus Jadwal</button>';
+    h+='<button class="btn btn-xs'+(sched?'':' btn-red')+'" onclick="openPanel(\''+v.id+'\')">'+(isOpen?'✕ Tutup':(sched?'✏ Ubah':'📅 Jadwalkan'))+'</button>';
+    h+='</div></div>';
+    if(isOpen){
+      h+='<div class="ipanel">';
+      h+='<div><label>Tanggal</label><input type="date" id="d-'+v.id+'" min="'+today()+'" value="'+esc(existing.date)+'"><div class="tz-hint">Timezone: '+tzLabel()+'</div></div>';
+      h+='<div><label>Jam</label><input type="time" id="t-'+v.id+'" value="'+esc(existing.time)+'"></div>';
+      h+='<div style="display:flex;gap:6px;margin-top:auto">'+
+        '<button class="btn btn-red btn-sm" id="save-'+v.id+'" onclick="doSchedule(\''+v.id+'\')">Simpan</button>'+
+        (sched?'<button class="btn btn-sm" onclick="doUnschedule(\''+v.id+'\')">Hapus</button>':'')+
+        '<button class="btn btn-sm btn-ghost" onclick="openPanel(\''+v.id+'\')">Batal</button>'+
+      '</div>';
+      h+='</div>';
+    }
+  });
+  h+='</div>';return h;
+}
+
+/* Bulk scheduler tab */
+function renderBulk(){
+  var b=A.bulk;
+  var allDrafts=getDrafts();
+  var unscheduled=allDrafts.filter(function(v){return!A.scheduled[v.id]});
+  var scheduled=allDrafts.filter(function(v){return!!A.scheduled[v.id]});
+
+  // Sort scheduled by date ascending
+  scheduled.sort(function(a,b){return new Date(A.scheduled[a.id])-new Date(A.scheduled[b.id])});
+
+  // Sub-tab bar
+  var h='<div style="display:flex;gap:0;margin-bottom:1.25rem;border-bottom:1px solid var(--border)">';
+  h+='<button class="tab'+(b.subTab==='unsched'?' active':'')+'" onclick="A.bulk.subTab=\'unsched\';render()">'+
+    '📋 Belum Dijadwalkan <span style="background:var(--orange-bg);color:var(--orange);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">'+unscheduled.length+'</span></button>';
+  h+='<button class="tab'+(b.subTab==='sched'?' active':'')+'" onclick="A.bulk.subTab=\'sched\';render()">'+
+    '✅ Sudah Terjadwal <span style="background:var(--green-bg);color:var(--green);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px">'+scheduled.length+'</span></button>';
+  h+='</div>';
+
+  if(b.subTab==='sched'){
+    h+=renderBulkScheduled(scheduled);
+  } else {
+    h+=renderBulkUnsched(unscheduled,b);
+  }
+  return h;
+}
+
+function renderBulkScheduled(scheduled){
+  var h='';
+  if(!scheduled.length){
+    return'<div class="empty"><div style="font-size:38px;margin-bottom:8px">📭</div><p style="font-size:13px">Belum ada video yang terjadwal.</p></div>';
+  }
+
+  // Summary info
+  h+='<div class="info-green" style="margin-bottom:12px">'+
+    '✅ <b>'+scheduled.length+' video</b> sudah terjadwal. Klik <b>Ubah</b> untuk mengganti tanggal, atau <b>Hapus</b> untuk membatalkan jadwal.'+
+  '</div>';
+
+  h+='<div style="overflow-x:auto"><table class="ptable" style="width:100%">';
+  h+='<thead><tr><th class="pnum">#</th><th>Video</th><th>Jadwal Publish</th><th style="width:110px">Aksi</th></tr></thead><tbody>';
+
+  scheduled.forEach(function(v,i){
+    var iso=A.scheduled[v.id];
+    var thumb=getThumb(v),title=getTitle(v);
+    var isSn=isSoon(iso);
+    var dateLabel=fmtDate(iso);
+    h+='<tr>';
+    h+='<td class="pnum">'+(i+1)+'</td>';
+    h+='<td style="vertical-align:middle">';
+    h+='<div style="display:flex;align-items:center;gap:8px">';
+    h+=(thumb?'<img src="'+esc(thumb.url)+'" style="width:56px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0" loading="lazy">':'<div style="width:56px;height:32px;background:var(--hover);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">▶</div>');
+    h+='<span class="ptitle" style="max-width:180px" title="'+esc(title)+'">'+esc(title)+'</span>';
+    h+='</div></td>';
+    h+='<td><span class="badge '+(isSn?'b-soon':'b-sched')+'" style="font-size:11px">'+(isSn?'⏰ ':'')+esc(dateLabel)+'</span></td>';
+    h+='<td>';
+    h+='<div style="display:flex;gap:4px">';
+    h+='<button class="btn btn-xs" onclick="openPanel(\''+v.id+'\');A.tab=\'list\';render()" title="Ubah jadwal">✏</button>';
+    h+='<button class="btn btn-xs" style="color:var(--red)" onclick="doUnschedule(\''+v.id+'\')" title="Hapus jadwal">✕</button>';
+    h+='</div>';
+    h+='</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+
+  // Bulk unschedule all
+  h+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">';
+  h+='<button class="btn btn-sm" style="color:var(--red);border-color:var(--red-b)" onclick="confirmUnscheduleAll()">✕ Hapus Semua Jadwal</button>';
+  h+='</div>';
+  return h;
+}
+
+function renderBulkUnsched(unscheduled,b){
+  var selCount=b.selected.length;
+  var h='<div class="bulk-wrap">';
+
+  // LEFT: settings
+  var left='<div class="panel">';
+  left+='<div class="panel-head">⚙️ Pengaturan Jadwal Massal</div>';
+  left+='<div class="panel-body">';
+  left+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">Mode Penjadwalan</div>';
+  left+='<div class="mode-opts">';
+  left+='<label class="mode-opt'+(b.mode==='interval'?' selected':'')+'"><input type="radio" name="bmode" value="interval" onchange="setMode(\'interval\')" '+(b.mode==='interval'?'checked':'')+'>'+
+    '<div class="mode-opt-text"><strong>📅 Interval Otomatis</strong><span>1 video per N hari dari tanggal mulai</span></div></label>';
+  left+='<label class="mode-opt'+(b.mode==='custom'?' selected':'')+'"><input type="radio" name="bmode" value="custom" onchange="setMode(\'custom\')" '+(b.mode==='custom'?'checked':'')+'>'+
+    '<div class="mode-opt-text"><strong>🗓 Pilih Tanggal Sendiri</strong><span>Tentukan tanggal berbeda untuk tiap video</span></div></label>';
+  left+='</div>';
+  if(b.mode==='interval'){
+    left+='<div class="fg"><label>Tanggal Mulai</label><input type="date" id="b-start" min="'+today()+'" value="'+esc(b.startDate||tomorrow())+'" oninput="A.bulk.startDate=this.value;render()"></div>';
+    left+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:7px">Interval</div>';
+    left+='<div class="interval-row">';
+    [1,2,3,7].forEach(function(n){
+      left+='<button class="interval-btn'+(b.interval===n?' sel':'')+'" onclick="setInterval2('+n+')">'+(n===1?'Tiap Hari':n===7?'Tiap Minggu':n+' Hari Sekali')+'</button>';
+    });
+    left+='<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)">Custom:<input class="custom-n" type="number" min="1" max="365" value="'+b.customN+'" oninput="A.bulk.customN=parseInt(this.value)||1" id="b-custn">'+
+      '<button class="btn btn-xs" onclick="setInterval2(parseInt(val(\'b-custn\'))||1)">OK</button></div>';
+    left+='</div>';
+  }
+  left+='<div class="fg" style="margin-top:12px"><label>Jam Publish — '+tzLabel()+' (waktu lokal)</label><input type="time" id="b-time" value="'+esc(b.time)+'" oninput="A.bulk.time=this.value"></div>';
+  left+='</div></div>';
+
+  // RIGHT: video selection + preview
+  var right='<div>';
+  right+='<div class="panel" style="margin-bottom:12px">';
+  right+='<div class="panel-head">📋 Pilih Video yang Akan Dijadwalkan '+
+    '<button class="btn btn-xs btn-ghost" onclick="selectAllBulk()">'+(selCount===unscheduled.length&&unscheduled.length>0?'Batal Semua':'Pilih Semua')+'</button></div>';
+  right+='<div class="panel-body" style="padding:10px">';
+
+  if(!unscheduled.length){
+    right+='<div class="empty" style="padding:1.5rem"><p style="font-size:13px">Semua draft sudah terjadwal! 🎉</p>'+
+      '<p style="font-size:12px;color:var(--t3);margin-top:6px">Lihat tab <b>Sudah Terjadwal</b> untuk kelola jadwal yang ada.</p></div>';
+  }else{
+    right+='<div class="info-blue" style="font-size:11px;margin-bottom:8px">💡 Hanya video <b>belum dijadwalkan</b> yang tampil di sini. Urutan = urutan tanggal publish. Atur dengan ↑↓.</div>';
+    right+='<div class="sel-list">';
+    var selSet=new Set(b.selected);
+    // Only show unscheduled videos
+    var orderedSel=b.selected.filter(function(id){return unscheduled.find(function(v){return v.id===id})});
+    var orderedList=orderedSel.map(function(id){return A.videos.find(function(v){return v.id===id})}).filter(Boolean);
+    var unsel=unscheduled.filter(function(v){return!selSet.has(v.id)});
+    var allInOrder=orderedList.concat(unsel);
+
+    allInOrder.forEach(function(v){
+      var checked=selSet.has(v.id);
+      var thumb=getThumb(v),title=getTitle(v);
+      var posInSel=b.selected.indexOf(v.id);
+      right+='<div class="sel-row'+(checked?' checked':'')+'" onclick="toggleBulkSel(\''+v.id+'\')">';
+      right+='<input type="checkbox" '+(checked?'checked':'')+' onclick="event.stopPropagation();toggleBulkSel(\''+v.id+'\')">';
+      right+=(thumb?'<img class="sthumb" src="'+esc(thumb.url)+'" alt="" loading="lazy">':'<div class="sthumb-ph">▶</div>');
+      right+='<span class="stitle" title="'+esc(title)+'">'+esc(title)+'</span>';
+      if(checked){
+        right+='<span style="font-size:10px;font-weight:700;color:var(--red);min-width:16px;text-align:center">#'+(posInSel+1)+'</span>';
+        right+='<div class="reorder" onclick="event.stopPropagation()">'+
+          '<button onclick="moveUp(\''+v.id+'\')" '+(posInSel===0?'disabled':'')+'>▲</button>'+
+          '<button onclick="moveDown(\''+v.id+'\')" '+(posInSel===b.selected.length-1?'disabled':'')+'>▼</button>'+
+        '</div>';
+      }
+      right+='</div>';
+    });
+    right+='</div>';
+  }
+  right+='</div></div>';
+
+  // Preview panel
+  right+='<div class="panel">';
+  right+='<div class="panel-head">👁 Preview Jadwal <span style="font-size:11px;color:var(--t3);font-weight:500">'+selCount+' video dipilih</span></div>';
+  right+='<div class="panel-body">';
+  if(!selCount){
+    right+='<div class="empty" style="padding:1.5rem"><p style="font-size:13px">Pilih video di atas untuk melihat preview.</p></div>';
+  }else if(b.mode==='interval'){
+    var startVal=b.startDate||tomorrow();
+    right+='<div style="overflow-x:auto"><table class="ptable"><thead><tr><th class="pnum">#</th><th>Video</th><th>Tanggal Publish</th></tr></thead><tbody>';
+    b.selected.forEach(function(id,i){
+      var v=A.videos.find(function(x){return x.id===id});if(!v)return;
+      var dateStr=addDays(startVal,i*b.interval);
+      right+='<tr><td class="pnum">'+(i+1)+'</td><td class="ptitle">'+esc(getTitle(v))+'</td><td class="pdate">'+esc(fmtShort(dateStr))+'</td></tr>';
+    });
+    right+='</tbody></table></div>';
+    right+='<div class="info-green" style="margin-top:10px;font-size:11px">✓ '+selCount+' video dijadwalkan mulai <b>'+esc(fmtShort(startVal))+'</b>, setiap <b>'+b.interval+' hari</b>, jam <b>'+(b.time||'00:00')+' '+tzLabel()+'</b></div>';
+  }else{
+    right+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px">Pilih tanggal masing-masing video. Jam: <b id="b-time-label">'+(b.time||'00:00')+'</b> '+tzLabel()+'</div>';
+    right+='<div style="overflow-x:auto"><table class="ptable"><thead><tr><th class="pnum">#</th><th>Video</th><th>Tanggal</th></tr></thead><tbody>';
+    b.selected.forEach(function(id,i){
+      var v=A.videos.find(function(x){return x.id===id});if(!v)return;
+      var existing=b.customDates[id]||'';
+      right+='<tr><td class="pnum">'+(i+1)+'</td><td class="ptitle">'+esc(getTitle(v))+'</td>'+
+        '<td class="pdate-custom"><input type="date" id="bc-'+id+'" min="'+today()+'" value="'+esc(existing)+'" oninput="A.bulk.customDates[\''+id+'\']=this.value"></td></tr>';
+    });
+    right+='</tbody></table></div>';
+  }
+  right+='</div>';
+  if(selCount>0){
+    right+='<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+      '<span style="font-size:12px;color:var(--t3)">'+selCount+' video akan dijadwalkan</span>'+
+      '<button class="btn btn-red" id="bulk-apply" onclick="saveBulkValues()">🚀 Terapkan Jadwal</button>'+
+    '</div>';
+  }
+  right+='</div></div>';
+
+  h+=left+right+'</div>';
+  return h;
+}
+
+async function confirmUnscheduleAll(){
+  var scheduled=getDrafts().filter(function(v){return!!A.scheduled[v.id]});
+  if(!scheduled.length)return;
+  if(!confirm('Hapus jadwal untuk SEMUA '+scheduled.length+' video? Tindakan ini tidak bisa dibatalkan.'))return;
+  var ok=0;
+  for(var i=0;i<scheduled.length;i++){
+    try{await apiUnset(scheduled[i].id);delete A.scheduled[scheduled[i].id];ok++;}catch(e){}
+  }
+  saveSched();toast(ok+' jadwal berhasil dihapus','inf');render();
+}
+
+
+function buildIntervalPreview(){return[]}
+function buildCustomPreviewRows(){return[]}
+
+function saveBulkValues(){
+  // Sync all form values before applying
+  A.bulk.startDate=val('b-start')||A.bulk.startDate||tomorrow();
+  A.bulk.time=val('b-time')||A.bulk.time;
+  if(A.bulk.mode==='custom'){
+    A.bulk.selected.forEach(function(id){var v=val('bc-'+id);if(v)A.bulk.customDates[id]=v;});
+  }
+  applyBulk();
+}
+
+/* Calendar tab */
+function renderCalendar(){
+  var MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var DAYS=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  var y=A.calY,m=A.calM;
+  var ev={};
+  Object.entries(A.scheduled).forEach(function(e){
+    var d=new Date(e[1]);
+    if(d.getFullYear()!==y||d.getMonth()!==m)return;
+    var k=d.getDate();if(!ev[k])ev[k]=[];
+    var v=A.videos.find(function(x){return x.id===e[0]});if(v)ev[k].push(v);
+  });
+  var td=new Date(),first=new Date(y,m,1),sd=first.getDay(),dim=new Date(y,m+1,0).getDate(),pp=new Date(y,m,0).getDate();
+  var h='<div class="cal-nav">'+
+    '<button class="btn btn-sm" onclick="A.calM--;if(A.calM<0){A.calM=11;A.calY--;}render()">← Prev</button>'+
+    '<span class="cal-title">'+MONTHS[m]+' '+y+'</span>'+
+    '<button class="btn btn-sm" onclick="A.calM++;if(A.calM>11){A.calM=0;A.calY++;}render()">Next →</button>'+
+  '</div><div class="cal-grid">';
+  DAYS.forEach(function(d){h+='<div class="cal-head">'+d+'</div>';});
+  for(var i=0;i<42;i++){
+    var day,off=false;
+    if(i<sd){day=pp-sd+i+1;off=true;}
+    else if(i>=sd+dim){day=i-sd-dim+1;off=true;}
+    else day=i-sd+1;
+    var isT=!off&&day===td.getDate()&&m===td.getMonth()&&y===td.getFullYear();
+    var evs=off?[]:(ev[day]||[]);  // sel abu-abu (overflow) tidak pernah tampilkan event
+    h+='<div class="cal-cell'+(off?' dim':'')+(isT?' today':'')+'"><div class="cal-num">'+day+'</div>';
+    evs.slice(0,2).forEach(function(v){var t=getTitle(v);h+='<div class="cal-ev" title="'+esc(t)+'">'+esc(t.length>16?t.slice(0,14)+'…':t)+'</div>';});
+    if(evs.length>2)h+='<div class="cal-more">+' +(evs.length-2)+' lagi</div>';
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+
+function renderDashboard(){
+  var h=renderChBar()+renderStats();
+  h+='<div class="tabs">'+
+    '<button class="tab'+(A.tab==='list'?' active':'')+'" onclick="A.tab=\'list\';A.openPanel=null;render()">📋 Per Video</button>'+
+    '<button class="tab'+(A.tab==='bulk'?' active':'')+'" onclick="A.tab=\'bulk\';A.openPanel=null;render()">🚀 Jadwal Massal</button>'+
+    '<button class="tab'+(A.tab==='cal'?' active':'')+'" onclick="A.tab=\'cal\';render()">📅 Kalender</button>'+
+  '</div>';
+  if(A.tab==='list')h+=renderPerVideo();
+  else if(A.tab==='bulk')h+=renderBulk();
+  else h+=renderCalendar();
+  return h;
+}
+
+function renderAddChModal(){
+  var sw=COLORS.map(function(c){return'<div class="cswatch'+(A.newCh.color===c?' sel':'')+'" style="background:'+c+'" onclick="A.newCh.color=\''+c+'\';render()"></div>';}).join('');
+  var cidField=getClientIds().length>0
+    ? '<div class="info-blue" style="font-size:12px;margin-bottom:10px">✓ Menggunakan Client ID dari config file.</div>'
+    : '<div class="fg"><label>OAuth Client ID</label><input id="nc-cid" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" value="'+esc(A.newCh.cid)+'"></div>';
+  return'<div class="overlay" onclick="if(event.target===this){A.modal=null;render()}">'+
+    '<div class="modal"><h3>➕ Tambah Channel Baru</h3>'+
+    '<div class="fg"><label>Nama Channel</label><input id="nc-name" type="text" placeholder="Channel Gaming" value="'+esc(A.newCh.name)+'"></div>'+
+    cidField+
+    '<div class="fg"><label>Warna Label</label><div class="color-row">'+sw+'</div></div>'+
+    '<div class="modal-footer"><button class="btn btn-sm" onclick="A.modal=null;render()">Batal</button>'+
+    '<button class="btn btn-red btn-sm" onclick="A.newCh.name=val(\'nc-name\');A.newCh.cid=val(\'nc-cid\')||getClientIds()[0]||\'\';addChannel()">Hubungkan →</button></div>'+
+    '</div></div>';
+}
+
+function render(){
+  var root=$('root');if(!root)return;
+  var h='';
+  if(A.step==='setup')h=renderSetup();
+  else if(A.step==='loading')h='<div class="loader"><div class="spinner"></div> Memuat video dari YouTube...</div>';
+  else if(A.step==='pick_channel')h=renderPickChannel();
+  else if(A.step==='dashboard')h=renderDashboard();
+  if(A.modal==='addch')h+=renderAddChModal();
+  if(A.modal==='cfg')h+=renderCfgModal();
+  root.innerHTML=h;renderHeader();
+}
+
+// Boot — if CONFIG has clientId and channels, skip setup screen
+A.channels = lsCh();
+if(A.channels.length && getClientIds().length){
+  A.step = 'setup'; // show channel selector, not blank setup
+}
+render();
+</script>
+</body>
+</html>
